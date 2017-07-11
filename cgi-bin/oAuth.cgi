@@ -17,10 +17,10 @@ use OAuthConfig;
 my $dbh = dbh();
 my $cgi = new CGI();
 
-# my @params = $cgi->param;
-# foreach my $param (@params) {
-#   $cgi->param($param, quote($cgi->param($param)));
-# }
+my @params = $cgi->param;
+foreach my $param (@params) {
+  $cgi->param($param, quote($cgi->param($param)));
+}
 
 my $cookie = $cgi->cookie(SESSION_COOKIE_NAME);
 my $user = "";
