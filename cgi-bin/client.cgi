@@ -17,10 +17,10 @@ my $json = new JSON;
 my $cgi = new CGI();
 
 my $settings = { app_id => 'ANL Sequencing Core',
-		 app_secret => 'vcZYffLyDabuyxXN8vstbsaMdNwpMKfk',
+		 app_secret => APP_SECRET,
 		 dialog_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=dialog',
-		 token_url => 'http://localhost/cgi-bin/oAuth.cgi?action=token',
-		 data_url => 'http://localhost/cgi-bin/oAuth.cgi?action=data' };
+		 token_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=token',
+		 data_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=data' };
 
 my $app_id = $settings->{app_id};
 my $app_secret = $settings->{app_secret};

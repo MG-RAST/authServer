@@ -34,8 +34,8 @@ $agent->timeout(600);
 my $json = JSON->new();
 $json->max_size(0);
 my $dbh = dbh();
-my @args = (('Authorization', "mgrast vgnLMF7i6KYm5T6EkMNuapHNn"));
-my $url = 'http://shock.metagenomics.anl.gov/node/';
+my @args = (('Authorization', SHOCK_AUTH));
+my $url = SHOCK_URL;
 
 my ($su, $perm) = auth();
 $cgi->param('type', 'run-folder-archive-fastq');
@@ -77,7 +77,7 @@ my $response = $agent->get($url, @args)->content;
 respond($response);
 
 sub dbh {
-  my $connection = DBI->connect("dbi:SQLite:dbname=".USER_DB, "", "", {AutoCommit => 0, PrintError => 1});
+  my $connection = DBI->connect(DBI_CONNECT, "", "", {AutoCommit => 0, PrintError => 1});
   unless ($connection) {
     die "could not open database: $@";
   }
