@@ -1,3 +1,8 @@
+
+# docker build -t mgrast/auth-server .
+
+# docker rm auth-server ; docker run -d --name auth-server -p 7000:80  mgrast/auth-server
+
 FROM httpd:2.4
 
 # Dependencies
@@ -36,10 +41,10 @@ RUN apt-get install -y \
 ENV PERL_MM_USE_DEFAULT 1
 
 RUN mkdir -p /db && chmod a+w /db
-COPY authServer/user.db /db/user.db
+COPY user.db /db/user.db
 RUN chmod a+w /db/user.db
 
-RUN mkdir -p /usr/local/apache2/htdocs/authServer /usr/local/apache2/htdocs/SequenceCenter
-COPY authServer/. /usr/local/apache2/htdocs/authServer/
-COPY SequenceCenter/. /usr/local/apache2/htdocs/SequenceCenter/
+COPY ./cgi-bin ./html /usr/local/apache2/htdocs/
+
 COPY httpd.conf /usr/local/apache2/conf/
+
