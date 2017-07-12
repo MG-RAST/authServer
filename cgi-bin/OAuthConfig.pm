@@ -26,6 +26,10 @@ use constant SHOCK_AUTH => "";
 use constant APP_SECRET => "";
 use constant DBI_CONNECT => "dbi:SQLite:dbname=".USER_DB;
 
+use constant MYSQL_USER_NAME => "";
+use constant MYSQL_USER_PASSWORD => "";
+
+
 use constant SMTP => "smtp.mcs.anl.gov";
 
 @ISA = qw(Exporter);
