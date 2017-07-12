@@ -5,7 +5,10 @@ oAuth authentication server with rights management
 
 
 ## Configure MySQL
+BY default this OAuth server uses a SQLite database. This are instructions how you can create a database in MySQL. 
 
+
+Database name and user name are just examples, you can choose whatever you want.
 ```bash
 export SQL_PASSWORD=<secret>
 export DB_NAME="SequenceCenterUsers"
