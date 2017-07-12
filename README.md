@@ -13,6 +13,7 @@ Database name and user name are just examples, you can choose whatever you want.
 export SQL_PASSWORD=<secret>
 export DB_NAME="SequenceCenterUsers"
 export DB_USER="sequser"
+export USER_PASSWORD="<another_secret>"
 export HOST_PREFIX="bio-worker"
 ```
 
@@ -32,7 +33,7 @@ Create users:
 (We are using a for loop to loop over multiple hosts)
 
 ```bash
-for i in {1..21} ; do mysql -u root --password=${SQL_PASSWORD} ${DB_NAME} --execute "CREATE USER IF NOT EXISTS '${DB_USER}'@'${HOST_PREFIX}${i}.mcs.anl.gov';"  ; done
+for i in {1..21} ; do mysql -u root --password=${SQL_PASSWORD} ${DB_NAME} --execute "CREATE USER IF NOT EXISTS '${DB_USER}'@'${HOST_PREFIX}${i}.mcs.anl.gov' IDENTIFIED BY '${USER_PASSWORD}';"  ; done
 ```
 
 Give permissions:
