@@ -847,7 +847,7 @@ sub secret {
   }
 
 sub dbh {
-  my $connection = DBI->connect("dbi:SQLite:dbname=".USER_DB, "", "", {AutoCommit => 0, PrintError => 1});
+  my $connection = DBI->connect(DBI_CONNECT, DBI_USER, DBI_PASS, {AutoCommit => 0, PrintError => 1});
   unless ($connection) {
     die "could not open database: $@";
   }

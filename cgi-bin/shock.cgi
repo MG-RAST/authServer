@@ -77,7 +77,7 @@ my $response = $agent->get($url, @args)->content;
 respond($response);
 
 sub dbh {
-  my $connection = DBI->connect(DBI_CONNECT, "", "", {AutoCommit => 0, PrintError => 1});
+  my $connection = DBI->connect(DBI_CONNECT, DBI_USER, DBI_PASS, {AutoCommit => 0, PrintError => 1});
   unless ($connection) {
     die "could not open database: $@";
   }
