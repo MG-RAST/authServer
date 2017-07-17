@@ -38,6 +38,6 @@ for i in {1..21} ; do mysql -u root --password=${SQL_PASSWORD} ${DB_NAME} --exec
 
 Give permissions:
 ```bash
-for i in {1..21} ; do echo mysql -u root --password=${SQL_PASSWORD} ${DB_NAME}  --execute "GRANT SELECT, INSERT, UPDATE, DELETE on ${DB_NAME} .* to '${DB_USER}'@'${HOST_PREFIX}${i}.mcs.anl.gov';" ; done
+for i in {1..21} ; do mysql -u root --password=${SQL_PASSWORD} ${DB_NAME}  --execute "GRANT SELECT, INSERT, UPDATE, DELETE on ${DB_NAME} .* to '${DB_USER}'@'${HOST_PREFIX}${i}.mcs.anl.gov';" ; done
 ```
 
