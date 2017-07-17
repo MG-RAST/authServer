@@ -26,7 +26,7 @@ CREATE DATABASE ${DB_NAME};
 
 Create tables
 ```bash
-cat dbsetup.sql | mysql -u root --password=${SQL_PASSWORD} ${DB_NAME}
+cat dbsetup.mysql | mysql -u root --password=${SQL_PASSWORD} ${DB_NAME}
 ```
 
 Create users:
