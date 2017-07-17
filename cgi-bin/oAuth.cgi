@@ -63,7 +63,7 @@ if ($cgi->param('logout')) {
 }
 
 if ($cgi->param('login') && $cgi->param('pass')) {
-  my $res = $dbh->selectrow_arrayref("SELECT login FROM user WHERE login='".$cgi->param("login")."' AND password='".md5_hex(scalar $cgi->param("pass"))."' AND confirmed=1;");
+  my $res = $dbh->selectrow_arrayref("SELECT login FROM user WHERE login='".$cgi->param("login")."' AND password='".md5_hex(scalar $cgi->param("pass"))."' AND confirmed='yes';");
   if ($dbh->err()) {
     warning_message($DBI::errstr);
     exit 0;
@@ -268,11 +268,12 @@ unless ($cgi->param('action')) {
 	      exit 0;
 	    }
 	  }
-	  
+
+	  my $email = $cgi->param("email");
 	  if (sendmail({ from    => ADMIN_EMAIL,
-			 to      => $cgi->param("email"),
+			 to      => $email,
 			 subject => "User Account registration",
-			 body => "Please click the following link to verify your account\n\n".BASE_URL."/oAuth.cgi?action=verify&login=".$cgi->param("login")."&id=$secret\n\nAccount: ".$cgi->param("username")." (".$cgi->param("login").")" })) {
+			 body => "Please click the following link to verify your account\n\n".BASE_URL."/cgi-bin/oAuth.cgi?action=verify&login=".$cgi->param("login")."&id=$secret\n\nAccount: ".$cgi->param("username")." (".$cgi->param("login").")" })) {
 	    success_message("Your account is registered. You will receive a confirmation message to the entered email address. Your account will be inactive until you click the verification link in that email.");
 	  } else {
 	    warning_message("Could not send out verification email: $@");
@@ -523,7 +524,7 @@ unless ($cgi->param('action')) {
 	  sendmail({ from    => ADMIN_EMAIL,
 		     to      => $cgi->param("email"),
 		     subject => "data has been shared with you",
-		     body    => "A user of ".APPLICATION_NAME." has shared data with this email address, which is not yet registered in our system. Please click the following link to register an account to access the data. If you already have an account, you can connect the data to it.\n\n".BASE_URL."/oAuth.cgi?action=claim&token=".$token
+		     body    => "A user of ".APPLICATION_NAME." has shared data with this email address, which is not yet registered in our system. Please click the following link to register an account to access the data. If you already have an account, you can connect the data to it.\n\n".BASE_URL."/cgi-bin/oAuth.cgi?action=claim&token=".$token
 		   });
 	  $dbh->do("INSERT INTO scope (name, user) VALUES ('".$cgi->param('email')."', '$token')");
 	  $dbh->commit();
