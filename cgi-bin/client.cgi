@@ -16,7 +16,7 @@ use OAuthConfig;
 my $json = new JSON;
 my $cgi = new CGI();
 
-my $settings = { app_id => 'ANL Sequencing Core',
+my $settings = { app_id => APPLICATION_NAME,
 		 app_secret => APP_SECRET,
 		 dialog_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=dialog',
 		 token_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=token',

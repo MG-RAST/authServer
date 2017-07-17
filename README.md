@@ -41,3 +41,11 @@ Give permissions:
 for i in {1..21} ; do echo mysql -u root --password=${SQL_PASSWORD} ${DB_NAME}  --execute "GRANT SELECT, INSERT, UPDATE, DELETE on ${DB_NAME} .* to '${DB_USER}'@'${HOST_PREFIX}${i}.mcs.anl.gov';" ; done
 ```
 
+## register an application
+By default application registration is disabled. To enable it, set
+ALLOW_REGISTER_APPLICATION in OAuthConfig.pm to 1. The application
+base url will then provide an app registration form. Make sure to use
+the full URL including your service script name (i.e. client.cgi). You
+will receive a secret that must be used by the app to verify against
+the oAuth server. After your app is registered you probably want to
+set the configuration variable back to 0.
