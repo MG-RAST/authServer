@@ -18,9 +18,9 @@ my $cgi = new CGI();
 
 my $settings = { app_id => APPLICATION_NAME,
 		 app_secret => APP_SECRET,
-		 dialog_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=dialog',
-		 token_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=token',
-		 data_url => 'http://'.BASE_URL.'/cgi-bin/oAuth.cgi?action=data' };
+		 dialog_url => BASE_URL.'/cgi-bin/oAuth.cgi?action=dialog',
+		 token_url => BASE_URL.'/cgi-bin/oAuth.cgi?action=token',
+		 data_url => BASE_URL.'/cgi-bin/oAuth.cgi?action=data' };
 
 my $app_id = $settings->{app_id};
 my $app_secret = $settings->{app_secret};
@@ -28,7 +28,7 @@ my $dialog_url = $settings->{dialog_url};
 my $token_url = $settings->{token_url};
 my $data_url = $settings->{data_url};
 
-my $my_url = "http://".BASE_URL."/cgi-bin/client.cgi";
+my $my_url = BASE_URL."/cgi-bin/client.cgi";
 
 my $code = $cgi->param('code');
 
