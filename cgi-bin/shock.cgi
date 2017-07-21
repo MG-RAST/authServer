@@ -38,29 +38,49 @@ my @args = (('Authorization', SHOCK_AUTH));
 my $url = SHOCK_URL;
 
 my ($su, $perm) = auth();
-$cgi->param('type', 'run-folder-archive-fastq');
 unless ($su) {
-
-  my $project = $cgi->param('project_id');
+  $cgi->param('type', 'run-folder-archive-fastq');
+  my $project_id = $cgi->param('project_id') || "";
+  my $group = $cgi->param('group') || "";
+  my $project = $cgi->param('project') || "";
+  my $filename = $cgi->param('name') || "";
   my $u = $cgi->url(-query=>1);
   if ($u =~ /download/) {
     my $nodeid = $cgi->url(-relative=>1);
     eval {
       my $response = $json->decode($agent->get($url.$nodeid, @args)->content);
-      $project = $response->{data}->{attributes}->{project_id};
+      $project_id = $response->{data}->{attributes}->{project_id};
+      $group = $response->{data}->{attributes}->{group};
+      $project = $response->{data}->{attributes}->{project};
+      $filename = $response->{data}->{attributes}->{name};
     };
     if ($@) {
       respond('{ "ERROR": "unable to retrieve node from server ('.$@.')" }', 404);
     }
   } elsif (! $cgi->param('project_id')) {
-    respond('{ "ERROR": "missing project" }', 400);
+    respond('{ "ERROR": "missing run folder" }', 400);
   }
   
   my $can = 0;
   foreach my $r (@$perm) {
-    if ($r->{type} eq 'project' && $r->{item} eq $project && $r->{view}) {
-      $can = 1;
-      last;
+    if ($r->{type} eq 'project') {
+      my ($project_idR, $projectR) = split /\|/, $r->{item};
+      if ($project_idR eq $project_id && $projectR eq $project) {
+	$can = 1;
+	last;
+      }
+    } elsif ($r->{type} eq 'group') {
+      my ($project_idR, $groupR) = split /\|/, $r->{item};
+      if ($project_idR eq $project_id && $groupR eq $group) {
+	$can = 1;
+	last;
+      }
+    } else {
+      my ($project_idR, $filenameR) = split /\|/, $r->{item};
+      if ($project_idR eq $project_id && $filenameR eq $filename) {
+	$can = 1;
+	last;
+      }
     }
   }
   
