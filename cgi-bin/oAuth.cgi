@@ -106,7 +106,8 @@ unless ($cgi->param('action')) {
     <button type="submit" class="btn">register</button>
   </form>
 </div>~ : '';
-  print ALLOW_REGISTER_USER ? qq~
+  if (ALLOW_REGISTER_USER) {
+    print qq~
 <div>
   <h3>Register User</h3>
   <form class="form-horizontal">
@@ -119,7 +120,9 @@ unless ($cgi->param('action')) {
           <p class="help-block">Enter your full name as you would like it to be displayed.</p>
         </div>
       </div>
-
+~;
+    if (! EMAIL_IS_LOGIN) {
+      print qq~
       <div class="control-group">
         <label class="control-label" for="login">Login</label>
         <div class="controls">
@@ -127,7 +130,9 @@ unless ($cgi->param('action')) {
           <p class="help-block">Enter your desired login. Use alphanumerical characters only</p>
         </div>
       </div>
-
+~;
+    }
+    print qq~
       <div class="control-group">
         <label class="control-label" for="email">eMail</label>
         <div class="controls">
@@ -154,7 +159,8 @@ unless ($cgi->param('action')) {
     </fieldset>
     <button type="submit" class="btn">register</button>
   </form>
-</div>~ : '';
+</div>~;
+  }
   print close_template();
 } else {
   if ($cgi->param("action") eq "register_application") {
@@ -216,8 +222,9 @@ unless ($cgi->param('action')) {
 	}
       }
     }
-    if ($cgi->param("username") && $cgi->param("login") && $cgi->param("password") && $cgi->param("password_two") && $cgi->param("email")) {
+    if ($cgi->param("username") && (EMAIL_IS_LOGIN || $cgi->param("login")) && $cgi->param("password") && $cgi->param("password_two") && $cgi->param("email")) {
       if ($cgi->param("password") eq $cgi->param("password_two")) {
+	if (! EMAIL_IS_LOGIN) {
 	  my $res = $dbh->selectrow_arrayref("SELECT login FROM user WHERE login='".$cgi->param("login")."';");
 	  if ($dbh->err()) {
 	    warning_message($DBI::errstr);
@@ -227,63 +234,64 @@ unless ($cgi->param('action')) {
 	    warning_message("This login is already taken.");
 	    exit 0;
 	  }
-	  $res = $dbh->selectrow_arrayref("SELECT email FROM user WHERE email='".$cgi->param("email")."';");
+	}
+	my $res = $dbh->selectrow_arrayref("SELECT email FROM user WHERE email='".$cgi->param("email")."';");
+	if ($dbh->err()) {
+	  warning_message($DBI::errstr);
+	  exit 0;
+	}
+	if ($res) {
+	  warning_message("This email is already taken.");
+	  exit 0;
+	}
+	  
+	my $secret = secret();
+	my $pass = md5_hex(scalar $cgi->param("password"));
+	$dbh->do("INSERT INTO user (login, name, password, email, confirmed) VALUES ('".(EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param("login"))."', '".$cgi->param("username")."', '".$pass."', '".$cgi->param("email")."', '".$secret."');");
+	$dbh->do("INSERT INTO scope (name, user) VALUES ('".$cgi->param("login")."', '".$cgi->param("login")."');");
+	$dbh->commit();
+	if ($dbh->err()) {
+	  warning_message($DBI::errstr);
+	  exit 0;
+	}
+	
+	if ($cgi->param("token")) {
+	  $res = $dbh->selectrow_arrayref("SELECT name FROM scope WHERE user='".$cgi->param("token")."';");
 	  if ($dbh->err()) {
 	    warning_message($DBI::errstr);
 	    exit 0;
 	  }
 	  if ($res) {
-	    warning_message("This email is already taken.");
-	    exit 0;
-	  }
-	  
-	  my $secret = secret();
-	  my $pass = md5_hex(scalar $cgi->param("password"));
-	  $dbh->do("INSERT INTO user (login, name, password, email, confirmed) VALUES ('".$cgi->param("login")."', '".$cgi->param("username")."', '".$pass."', '".$cgi->param("email")."', '".$secret."');");
-	  $dbh->do("INSERT INTO scope (name, user) VALUES ('".$cgi->param("login")."', '".$cgi->param("login")."');");
-	  $dbh->commit();
-	  if ($dbh->err()) {
-	    warning_message($DBI::errstr);
-	    exit 0;
-	  }
-	  
-	  if ($cgi->param("token")) {
-	    $res = $dbh->selectrow_arrayref("SELECT name FROM scope WHERE user='".$cgi->param("token")."';");
+	    my $email = $res->[0];
+	    my $login = EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param('login');
+	    $dbh->do("DELETE FROM scope WHERE user='".$cgi->param("token")."'");
+	    $dbh->do("UPDATE rights SET scope='$login' WHERE scope='".$email."'");
+	    $dbh->commit();
 	    if ($dbh->err()) {
 	      warning_message($DBI::errstr);
 	      exit 0;
 	    }
-	    if ($res) {
-	      my $email = $res->[0];
-	      my $login = $cgi->param('login');
-	      $dbh->do("DELETE FROM scope WHERE user='".$cgi->param("token")."'");
-	      $dbh->do("UPDATE rights SET scope='$login' WHERE scope='".$email."'");
-	      $dbh->commit();
-	      if ($dbh->err()) {
-		warning_message($DBI::errstr);
-		exit 0;
-	      }
-	    } else {
-	      warning_message("token not found");
-	      exit 0;
-	    }
-	  }
-
-	  my $email = $cgi->param("email");
-	  if (sendmail({ from    => ADMIN_EMAIL,
-			 to      => $email,
-			 subject => EMAIL_REG_SUBJECT,
-			 body => "Dear ".$cgi->param("username").",\n".EMAIL_REG_PREFIX.BASE_URL."/cgi-bin/oAuth.cgi?action=verify&login=".$cgi->param("login")."&id=$secret".EMAIL_REG_SUFFIX})) {
-	    success_message("Your account is registered. You will receive a confirmation message to the entered email address. Your account will be inactive until you click the verification link in that email.");
 	  } else {
-	    warning_message("Could not send out verification email: $@");
+	    warning_message("token not found");
 	    exit 0;
 	  }
-	  
+	}
+	
+	my $email = $cgi->param("email");
+	if (sendmail({ from    => ADMIN_EMAIL,
+		       to      => $email,
+		       subject => EMAIL_REG_SUBJECT,
+		       body => "Dear ".$cgi->param("username").",\n".EMAIL_REG_PREFIX.BASE_URL."/cgi-bin/oAuth.cgi?action=verify&login=".(EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param("login"))."&id=$secret".EMAIL_REG_SUFFIX})) {
+	  success_message("Your account is registered. You will receive a confirmation message to the entered email address. Your account will be inactive until you click the verification link in that email.");
 	} else {
-	  warning_message("Password and password verification do not match.");
+	  warning_message("Could not send out verification email: $@");
 	  exit 0;
 	}
+	
+      } else {
+	warning_message("Password and password verification do not match.");
+	exit 0;
+      }
     } else {
       warning_message("You must fill out all fields to register");
       exit 0;
@@ -471,6 +479,7 @@ unless ($cgi->param('action')) {
 	my $retval = '{"ERROR": false, "columns": ["login","name","email","admin","confirmed","date"], "data": [';
 	my $rows = [];
 	foreach my $row (@$res) {
+	  $row->[3] = $row->[3] || 0;
 	  push(@$rows, '["'.join('","', @$row).'"]');
 	}
 	$retval .= join(',', @$rows);
@@ -605,27 +614,45 @@ unless ($cgi->param('action')) {
       } else {
 	respond('{ "ERROR": "invalid access token" }', 401);
       }
-      if (! $cgi->param('scope') && $cgi->param('email')) {
+      my $existing_user = 0;
+      if ($cgi->param('scope')) {
+	my $response = $dbh->selectrow_arrayref("SELECT email FROM user, scope WHERE scope='".$cgi->param('scope')."' AND user.login=scope.user");
+	if ($dbh->err()) {
+	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	}
+	if (ref ($response) && scalar(@$response)) {
+	  $cgi->param('email', $response->[0]);
+	  $existing_user = 1;
+	} else {
+	  respond('{ "ERROR": "target scope not found" }', 401);
+	}
+      } elsif ($cgi->param('email')) {
 	my $response = $dbh->selectrow_arrayref("SELECT login FROM user WHERE email='".$cgi->param('email')."'");
 	if ($dbh->err()) {
 	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
 	}
 	if (ref $response && scalar(@$response)) {
 	  $cgi->param('scope', $response->[0]);
+	  $existing_user = 1;
 	} else {
 	  my $token = secret();
-	  sendmail({ from    => ADMIN_EMAIL,
-		     to      => $cgi->param("email"),
-		     subject => "data has been shared with you",
-		     body    => "A user of ".APPLICATION_NAME." has shared data with this email address, which is not yet registered in our system. Please click the following link to register an account to access the data. If you already have an account, you can connect the data to it.\n\n".BASE_URL."/cgi-bin/oAuth.cgi?action=claim&token=".$token
-		   });
 	  $dbh->do("INSERT INTO scope (name, user) VALUES ('".$cgi->param('email')."', '$token')");
 	  $dbh->commit();
 	  if ($dbh->err()) {
 	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
 	  }
+	  my $body = EMAIL_SHARE_UNKNOWN_SUFFIX;
+	  my $link = SHOCK_PREAUTH_URL.($cgi->param('pa')||'');
+	  $body =~ s/LINK/$link/;
+	  sendmail({ from    => ADMIN_EMAIL,
+		     to      => $cgi->param("email"),
+		     subject => EMAIL_SHARE_SUBJECT,
+		     body    => EMAIL_SHARE_UNKNOWN_PREFIX.BASE_URL."/cgi-bin/oAuth.cgi?action=claim&token=".$token.$body
+		   });
 	  $cgi->param('scope', $cgi->param('email'));
 	}
+      } else {
+	respond('{ "ERROR": "missing target identification" }', 400);
       }
       if ($cgi->param('type') && $cgi->param('item') && ($cgi->param('add') || $cgi->param('del'))) {
 	if (! $admin) {
@@ -655,6 +682,16 @@ unless ($cgi->param('action')) {
 	  if ($dbh->err()) {
 	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
 	  } else {
+	    if ($existing_user) {
+	      my $body = EMAIL_SHARE_KNOWN;
+	      my $link = SHOCK_PREAUTH_URL.($cgi->param('pa')||'');
+	      $body =~ s/LINK/$link/;
+	      sendmail({ from    => ADMIN_EMAIL,
+			 to      => scalar $cgi->param('email'),
+			 subject => EMAIL_SHARE_SUBJECT,
+			 body    => $body
+		       });
+	    }
 	    respond('{ "ERROR": false, "data": "permission added" }');
 	  }
 	} else {
@@ -829,8 +866,8 @@ sub login_screen {
   <h3>Login</h3>
   <form method=post>
     $hidden$message
-    <label>login</label>
-    <input type="text" placeholder="enter login" name="login">
+    <label>~.(EMAIL_IS_LOGIN ? 'email' : 'login').qq~</label>
+    <input type="text" placeholder="enter ~.(EMAIL_IS_LOGIN ? 'email' : 'login').qq~" name="login">
     <label>password</label>
     <div class="input-append"><input type="password" placeholder="enter password" name="pass">
     <button type="submit" class="btn">login</button></div>
