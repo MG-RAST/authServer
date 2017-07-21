@@ -272,8 +272,8 @@ unless ($cgi->param('action')) {
 	  my $email = $cgi->param("email");
 	  if (sendmail({ from    => ADMIN_EMAIL,
 			 to      => $email,
-			 subject => "User Account registration",
-			 body => "Please click the following link to verify your account\n\n".BASE_URL."/cgi-bin/oAuth.cgi?action=verify&login=".$cgi->param("login")."&id=$secret\n\nAccount: ".$cgi->param("username")." (".$cgi->param("login").")" })) {
+			 subject => EMAIL_REG_SUBJECT,
+			 body => "Dear ".$cgi->param("username").",\n".EMAIL_REG_PREFIX.BASE_URL."/cgi-bin/oAuth.cgi?action=verify&login=".$cgi->param("login")."&id=$secret".EMAIL_REG_SUFFIX})) {
 	    success_message("Your account is registered. You will receive a confirmation message to the entered email address. Your account will be inactive until you click the verification link in that email.");
 	  } else {
 	    warning_message("Could not send out verification email: $@");
@@ -435,6 +435,99 @@ unless ($cgi->param('action')) {
       } else {
 	respond('{ "ERROR": "missing access token" }', 400);
       }
+    } elsif ($cgi->param('action') eq 'users') {
+      unless ($cgi->http('HTTP_AUTH')) {
+	respond('{ "ERROR": "missing authentication" }', 400);
+      }
+      my $login = $dbh->selectrow_arrayref("SELECT login FROM tokens WHERE token='".$cgi->http('HTTP_AUTH')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($login) {
+	$login = $login->[0];
+      } else {
+	respond('{ "ERROR": "invalid access token" }', 401);
+      }
+
+      my $admin = 0;
+      my $res = $dbh->selectrow_arrayref("SELECT admin FROM user WHERE login='$login'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      } else {
+	if ($res->[0]) {
+	  $admin = 1;
+	}
+      }
+
+      unless ($admin) {
+	respond('{ "ERROR": "insufficient permissions" }', 401);
+      }
+
+      $res = $dbh->selectall_arrayref("SELECT user.login, user.name, user.email, user.admin, user.confirmed, user.date FROM user;");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($res) {
+	my $retval = '{"ERROR": false, "columns": ["login","name","email","admin","confirmed","date"], "data": [';
+	my $rows = [];
+	foreach my $row (@$res) {
+	  push(@$rows, '["'.join('","', @$row).'"]');
+	}
+	$retval .= join(',', @$rows);
+	$retval .= '] }';
+	respond($retval)
+      } else {
+	respond('{ "ERROR": "could not get user list" }', 500);
+      }
+      
+    } elsif ($cgi->param('action') eq 'impersonate') {
+
+      unless ($cgi->http('HTTP_AUTH')) {
+	respond('{ "ERROR": "missing authentication" }', 400);
+      }
+      my $login = $dbh->selectrow_arrayref("SELECT login FROM tokens WHERE token='".$cgi->http('HTTP_AUTH')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($login) {
+	$login = $login->[0];
+      } else {
+	respond('{ "ERROR": "invalid access token" }', 401);
+      }
+
+      my $admin = 0;
+      my $res = $dbh->selectrow_arrayref("SELECT admin FROM user WHERE login='$login'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      } else {
+	if ($res->[0]) {
+	  $admin = 1;
+	}
+      }
+
+      unless ($admin) {
+	respond('{ "ERROR": "insufficient permissions" }', 401);
+      }
+
+      unless ($cgi->param('login')) {
+	respond('{ "ERROR": "missing login" }', 400);
+      }
+
+      my $token = $dbh->selectrow_arrayref("SELECT token FROM tokens WHERE login='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      my $user = $dbh->selectrow_arrayref("SELECT login, name, email, admin FROM user WHERE login='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($token && $user) {
+	$token = $token->[0];
+	respond('{ "ERROR": false, "data": { "login": "'.$user->[0].'", "name": "'.$user->[1].'", "email": "'.$user->[2].'", "admin": '.($user->[3] ? "1" : "0").', "token": "'.$token.'" } }');
+      } else {
+	respond('{ "ERROR": "invalid login" }', 401);
+      }
+      
     } elsif ($cgi->param('action') eq 'rights') {
       unless ($cgi->http('HTTP_AUTH')) {
 	respond('{ "ERROR": "missing authentication" }', 400);
