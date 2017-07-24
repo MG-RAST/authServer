@@ -408,7 +408,7 @@ unless ($cgi->param('action')) {
       }
     } elsif ($cgi->param("action") eq "data") {
       if ($cgi->http('HTTP_AUTH') && ! $cgi->param("access_token")) {
-	$cgi->param("access_token") = $cgi->http('HTTP_AUTH');
+	$cgi->param("access_token", $cgi->http('HTTP_AUTH'));
       }
       if ($cgi->param("access_token")) {
 	my $res = $dbh->selectrow_arrayref("SELECT user.login, user.name, user.email, user.admin, tokens.token FROM user, tokens WHERE tokens.token='".$cgi->param('access_token')."' AND user.login=tokens.login;");
