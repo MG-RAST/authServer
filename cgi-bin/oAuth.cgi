@@ -645,8 +645,8 @@ unless ($cgi->param('action')) {
 	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
 	  }
 	  my $body = EMAIL_SHARE_UNKNOWN_SUFFIX;
-	  my $link = SHOCK_PREAUTH_URL.($cgi->param('pa')||'');
-	  $body =~ s/LINK/$link/;
+	  my $dynamic = $cgi->param('dynamic') || '';
+	  $body =~ s/DYNAMIC/$dynamic/;
 	  sendmail({ from    => ADMIN_EMAIL,
 		     to      => $cgi->param("email"),
 		     subject => EMAIL_SHARE_SUBJECT,
@@ -666,37 +666,42 @@ unless ($cgi->param('action')) {
 	  unless (ref $scopes && scalar(@$scopes)) {
 	    respond('{ "ERROR": "user has no rights" }', 404);
 	  }
-	  my $response = $dbh->selectrow_arrayref("SELECT item FROM rights WHERE type='".$cgi->param('type')."' AND item='".$cgi->param('item')."' AND owner=1 AND scope IN ('".join("','", map { $_->[0] } @$scopes)."')");
-	  if ($dbh->err()) {
-	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
-	  }
-	  unless (ref $response) {
-	    respond('{ "ERROR": "insufficient permissions" }', 401);
+	  foreach my $item ($cgi->param('item')) {
+	    my $response = $dbh->selectrow_arrayref("SELECT item FROM rights WHERE type='".$cgi->param('type')."' AND item='".$item."' AND owner=1 AND scope IN ('".join("','", map { $_->[0] } @$scopes)."')");
+	    if ($dbh->err()) {
+	      respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	    }
+	    unless (ref $response) {
+	      respond('{ "ERROR": "insufficient permissions" }', 401);
+	    }
 	  }
 	}
-	$dbh->do("DELETE FROM rights WHERE type='".$cgi->param('type')."' AND item='".$cgi->param('item')."' AND scope='".$cgi->param('scope')."'");
-	$dbh->commit();
-	if ($dbh->err()) {
-	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
-	}
-	if ($cgi->param('add')) {
-	  $dbh->do("INSERT INTO rights (type, item, edit, view, scope, owner) VALUES ('".$cgi->param('type')."', '".$cgi->param('item')."', ".($cgi->param('edit') || 0).", ".($cgi->param('view') || 0).", '".$cgi->param('scope')."', ".($cgi->param('owner') || 0)." )");
+	foreach my $item ($cgi->param('item')) {
+	  $dbh->do("DELETE FROM rights WHERE type='".$cgi->param('type')."' AND item='".$item."' AND scope='".$cgi->param('scope')."'");
 	  $dbh->commit();
 	  if ($dbh->err()) {
 	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
-	  } else {
-	    if ($existing_user) {
-	      my $body = EMAIL_SHARE_KNOWN;
-	      my $link = SHOCK_PREAUTH_URL.($cgi->param('pa')||'');
-	      $body =~ s/LINK/$link/;
-	      sendmail({ from    => ADMIN_EMAIL,
-			 to      => scalar $cgi->param('email'),
-			 subject => EMAIL_SHARE_SUBJECT,
-			 body    => $body
-		       });
-	    }
-	    respond('{ "ERROR": false, "data": "permission added" }');
 	  }
+	  if ($cgi->param('add')) {
+	    $dbh->do("INSERT INTO rights (type, item, edit, view, scope, owner) VALUES ('".$cgi->param('type')."', '".$item."', ".($cgi->param('edit') || 0).", ".($cgi->param('view') || 0).", '".$cgi->param('scope')."', ".($cgi->param('owner') || 0)." )");
+	    $dbh->commit();
+	    if ($dbh->err()) {
+	      respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	    }
+	  }
+	}
+	if ($cgi->param('add')) {
+	  if ($existing_user) {
+	    my $body = EMAIL_SHARE_KNOWN;
+	    my $dynamic = $cgi->param('dynamic') || '';
+	    $body =~ s/DYNAMIC/$dynamic/;
+	    sendmail({ from    => ADMIN_EMAIL,
+		       to      => scalar $cgi->param('email'),
+		       subject => EMAIL_SHARE_SUBJECT,
+		       body    => $body
+		     });
+	  }
+	  respond('{ "ERROR": false, "data": "permission added" }');
 	} else {
 	  respond('{ "ERROR": false, "data": "permission removed" }');
 	}
