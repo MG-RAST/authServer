@@ -20,23 +20,30 @@ use constant ALLOW_REGISTER_USER => 1;
 use constant TRUSTED => "Demo App";
 
 use constant APPLICATION_NAME => "Demo Aplication";
-use constant APPLICATION_URL => "http://demo/index.html";
+use constant APPLICATION_URL => "http://shock/index.html";
 
-use constant SHOCK_URL => "http://shock.metagenomics.anl.gov/node/";
+use constant SHOCK_URL => "http://shock/node/";
 use constant SHOCK_AUTH => "";
 use constant APP_SECRET => "";
 
 # mysql connection
-use constant DBI_CONNECT => "dbi:mysql:database=DemoAppUsers;host=db";
-use constant DBI_USER    => "authService";
-use constant DBI_PASS    => "authServicePassword";
+use constant DB_NAME     => '' || $ENV{'MYSQL_DATABASE' } ;
+use constant DB_HOST     => '' || $ENV{'MYSQL_HOST' } ;
+use constant DBI_USER    => "" || $ENV{'MYSQL_USER' } ; # "authService"
+use constant DBI_PASS    => "authServicePassword" ||  $ENV{'MYSQL_PASSWORD'}; # "authServicePassword"
+use constant DBI_CONNECT => "dbi:mysql:database=".DB_NAME.";host=".DB_HOST;
 
 # SQLite connection
 # use constant DBI_CONNECT => "dbi:SQLite:dbname=".USER_DB;
 
-use constant MYSQL_USER_NAME => "demo";
-use constant MYSQL_USER_PASSWORD => "demo";
+# obsolete ?
+# use constant MYSQL_USER_NAME => "demo";
+# use constant MYSQL_USER_PASSWORD => "demo";
+# use constant MYSQL_USER_NAME => "" || $ENV{'MYSQL_USER' };;
+# use constant MYSQL_USER_PASSWORD => "" || $ENV{'MYSQL_PASSWORD'};
+
 use constant SMTP => "smtp.server.local";
+
 
 # Added 
 
