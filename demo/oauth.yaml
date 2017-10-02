@@ -53,4 +53,24 @@ services:
           - 7445:7445
           - 8083:80
           
+          
+    shock-browser:
+        image: shock:browser
+        depends_on:
+          - shock
+          - auth      
+    nginx:
+        image: nginx
+        depends_on:
+          - shock
+          - adminer
+          - auth
+        ports:
+          - 8001:8001 
+        volumes: 
+          - /Users/Andi/Development/github/App-Service-Stack/Services/nginx/conf/ass-demo.conf:/etc/nginx/conf.d/ass.conf:ro 
+          - /Users/Andi/Development/github/App-Service-Stack/Services/nginx/logs/error.log:/var/log/nginx/error.log       
+          
+
+          
             
