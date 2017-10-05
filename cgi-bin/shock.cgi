@@ -12,6 +12,7 @@ use LWP::UserAgent;
 use OAuthConfig;
 
 my $cgi = new CGI;
+$CGI::LIST_CONTEXT_WARN = 0;
 
 # get request method
 $ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
@@ -46,16 +47,45 @@ unless ($su) {
   my $filename = $cgi->param('name') || "";
   my $u = $cgi->url(-query=>1);
   if ($u =~ /download/) {
-    my $nodeid = $cgi->url(-relative=>1);
-    eval {
-      my $response = $json->decode($agent->get($url.$nodeid, @args)->content);
-      $project_id = $response->{data}->{attributes}->{project_id};
-      $group = $response->{data}->{attributes}->{group};
-      $project = $response->{data}->{attributes}->{project};
-      $filename = $response->{data}->{attributes}->{name};
-    };
-    if ($@) {
-      respond('{ "ERROR": "unable to retrieve node from server ('.$@.')" }', 404);
+    if ($request_method eq 'GET') {
+      my $nodeid = $cgi->url(-relative=>1);
+      eval {
+	my $response = $json->decode($agent->get($url.$nodeid, @args)->content);
+	$project_id = $response->{data}->{attributes}->{project_id};
+	$group = $response->{data}->{attributes}->{group};
+	$project = $response->{data}->{attributes}->{project};
+	$filename = $response->{data}->{attributes}->{name};
+      };
+      if ($@) {
+	respond('{ "ERROR": "unable to retrieve node from server ('.$@.')" }', 404);
+      }
+    } elsif ($request_method eq 'POST') {
+      my $params = {};
+      my $sharelist = [];
+      foreach my $p ($cgi->param) {
+	if ($p eq 'sharenames') {
+	  foreach my $sharename ($cgi->param('sharenames')) {
+	    push(@$sharelist, $sharename);
+	  }
+	} else {
+	  $params->{$p} = $cgi->param($p);
+	}
+      }
+      foreach my $fn (@$sharelist) {
+	my $hasPermission = 0;
+	my ($pid, $project, $group, $file) = split /\|/, $fn;
+	foreach my $right (@$perm) {
+	  if (($right->{item} eq "$pid|$file" && $right->{type} eq 'file') || ($right->{item} eq "$pid|$project" && $right->{type} eq 'project') || ($right->{item} eq "$pid|$group" && $right->{type} eq 'group')) {
+	    $hasPermission = 1;
+	    last;
+	  }
+	}
+	if (! $hasPermission) {
+	  respond('{ "ERROR": "insufficient permissions" }', 401);
+	}
+      }
+      push(@args, ('Content-Type', "multipart/form-data"));
+      respond($agent->post($url, @args, Content => $params)->content);
     }
   } elsif (! $cgi->param('project_id')) {
     respond('{ "ERROR": "missing run folder" }', 400);
@@ -89,10 +119,19 @@ unless ($su) {
   }
 }
 
-$url .= $cgi->url(-relative=>1, -query=>1);
-$url =~ s/;/&/g;
-
-my $response = $agent->get($url, @args)->content;
+my $response;
+if ($request_method eq 'GET') {
+  $url .= $cgi->url(-relative=>1, -query=>1);
+  $url =~ s/;/&/g;
+  $response = $agent->get($url, @args)->content;
+} elsif ($request_method eq 'POST') {
+  my $params = {};
+  foreach my $p ($cgi->param) {
+    $params->{$p} = $cgi->param($p);
+  }
+  push(@args, ('Content-Type', "multipart/form-data"));
+  $response = $agent->post($url, @args, Content => $params)->content;
+}
 
 respond($response);
 
