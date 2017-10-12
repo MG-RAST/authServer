@@ -19,8 +19,8 @@ my $cgi = new CGI();
 my $settings = { app_id => APPLICATION_NAME,
 		 app_secret => APP_SECRET,
 		 dialog_url => BASE_URL.'/cgi-bin/oAuth.cgi?action=dialog',
-		 token_url => BASE_URL.'/cgi-bin/oAuth.cgi?action=token',
-		 data_url => BASE_URL.'/cgi-bin/oAuth.cgi?action=data' };
+		 token_url => 'http://localhost/cgi-bin/oAuth.cgi?action=token',
+		 data_url => 'http://localhost/cgi-bin/oAuth.cgi?action=data' };
 
 my $app_id = $settings->{app_id};
 my $app_secret = $settings->{app_secret};
@@ -44,10 +44,10 @@ my $response = $json->decode($ua->get($call_url)->content);
 my $access_token = $response->{token};
 $call_url = $data_url . "&access_token=" . $access_token;
 $response = $ua->get($call_url)->content;
-my $cookie = CGI::Cookie->new( -name    => 'SeqWebSession',
+my $cookie = CGI::Cookie->new( -name    => 'AuthWebSession',
 			       -value   => $response,
 			       -expires => '+2d' );
 
-print $cgi->redirect(-uri => '/index.html', -cookie => $cookie);
+print $cgi->redirect(-uri => APPLICATION_URL, -cookie => $cookie);
 
 exit 0;
