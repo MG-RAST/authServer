@@ -597,7 +597,7 @@ unless ($cgi->param('action')) {
       my $response = '{ "ERROR": false, "columns": [ "type", "item", "edit", "view", "owner", "users" ], "data": [';
       my $rs = [];
       foreach my $row (@$rights) {
-	push(@$rs, '[ "'.$row->[0].'", "'.$row->[1].'", '.($row->[2] ? 'true' : 'false').', '.($row->[3] ? 'true' : 'false').', '.($row->[4] ? 'true' : 'false').', '.$scopeuserhash->{$row->[5]}.']');
+	push(@$rs, '[ "'.$row->[0].'", "'.$row->[1].'", '.($row->[2] ? 'true' : 'false').', '.($row->[3] ? 'true' : 'false').', '.($row->[4] ? 'true' : 'false').', '.($scopeuserhash->{$row->[5]} || '[]').']');
       }
       $response .= join(",", @$rs).' ] }';
       respond($response);
@@ -664,7 +664,7 @@ unless ($cgi->param('action')) {
 	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
 	  }
 	  unless (ref $scopes && scalar(@$scopes)) {
-	    respond('{ "ERROR": "user has no rights" }', 404);
+	    respond('{ "ERROR": false, "data": [] }', 404);
 	  }
 	  foreach my $item ($cgi->param('item')) {
 	    my $response = $dbh->selectrow_arrayref("SELECT item FROM rights WHERE type='".$cgi->param('type')."' AND item='".$item."' AND owner=1 AND scope IN ('".join("','", map { $_->[0] } @$scopes)."')");
@@ -1043,7 +1043,8 @@ sub sendmail {
 	      "To: $to\n",
 	      "From: $from\n",
 	      "Date: ".strftime("%a, %d %b %Y %H:%M:%S %z", localtime)."\n",
-	      "Subject: $subject\n\n",
+	      "Subject: $subject\n",
+	      "Content-Type: text/html\n\n",
 	      $body
 	     );
   
