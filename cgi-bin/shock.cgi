@@ -131,6 +131,8 @@ if ($request_method eq 'GET') {
   }
   push(@args, ('Content-Type', "multipart/form-data"));
   $response = $agent->post($url, @args, Content => $params)->content;
+} elsif ($request_method eq 'DELETE') {
+  $response = $agent->delete($url, @args)->content;
 }
 
 respond($response);
