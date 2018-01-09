@@ -5,10 +5,14 @@ use warnings;
 use DBI;
 use CGI;
 use CGI::Cookie;
+
+$CGI::LIST_CONTEXT_WARN = 0;
+$CGI::Application::LIST_CONTEXT_WARN = 0;
+
 use Digest::MD5 qw(md5_hex);
 use Net::SMTP;
 use POSIX qw(strftime);
-
+use MIME::Base64;
 use HTML::Strip;
 use Scalar::Util qw(looks_like_number);
 
@@ -28,7 +32,7 @@ my $uhash = "";
 if ($cookie) {
   my $secret;
   ($uhash, $secret) = split(/;/, $cookie);
- 
+  
   my $res = $dbh->selectrow_arrayref("SELECT login FROM user WHERE cookie='".$secret."';");
   if ($dbh->err()) {
     warning_message($DBI::errstr);
@@ -46,20 +50,41 @@ if ($cookie) {
 }
 
 if ($cgi->param('logout')) {
-    $cookie = CGI::Cookie->new( -name    => SESSION_COOKIE_NAME,
-				-value   => '',
-				-expires => "-1d" );
-    
-    $dbh->disconnect();
-    if ($cgi->param('redirect')) {
-      print $cgi->header( -redirect => $cgi->param('redirect'), -cookie => $cookie );
-    } else { 
-      print $cgi->header( -cookie => $cookie );
-      print base_template();
-      print success_message("You have been logged out.");
-      print close_template();
+  $cookie = CGI::Cookie->new( -name    => SESSION_COOKIE_NAME,
+			      -value   => '',
+			      -expires => "-1d" );
+  
+  $dbh->disconnect();
+  if ($cgi->param('redirect')) {
+    print $cgi->header( -redirect => $cgi->param('redirect'), -cookie => $cookie );
+  } else { 
+    print $cgi->header( -cookie => $cookie );
+    print base_template();
+    print success_message("You have been logged out.");
+    print close_template();
+    exit 0;
+  }
+}
+
+if (AUTH_KEYWORD && $cgi->param(AUTH_KEYWORD)) {
+  my $phrase = $cgi->param(AUTH_KEYWORD);
+  if (AUTH_PREFIX) {
+    my $pf = AUTH_PREFIX;
+    if ($phrase =~ /^$pf/) {
+      $phrase = substr($phrase, length $pf);
+    } else {
+      warning_message('invalid credential format');
       exit 0;
     }
+  }
+  my ($u,$p) = split(/\:/, decode_base64($key));
+  if ($u && $p) {
+    $cgi->param('login', $u);
+    $cgi->param('pass', $p);
+  } else {
+    warning_message('could not evaluate credentials');
+    exit 0;
+  }
 }
 
 if ($cgi->param('login') && $cgi->param('pass')) {
