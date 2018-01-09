@@ -189,7 +189,14 @@ unless ($cgi->param('action')) {
     }
     
   } elsif ($cgi->param("action") eq "register_user") {
+    my $claimuser;
     if ($cgi->param("token")) {
+      my $res2 = $dbh->selectrow_arrayref("SELECT name FROM scope WHERE user='".$cgi->param("token")."';");
+      if ($dbh->err()) {
+	warning_message($DBI::errstr);
+	exit 0;
+      }
+      $claimuser = $res2->[0];
       if ($cgi->param("email")) {
 	# check if this email is registered, if so attach the token and say goodbye
 	my $res = $dbh->selectrow_arrayref("SELECT login FROM user WHERE email='".$cgi->param("email")."';");
@@ -199,11 +206,7 @@ unless ($cgi->param('action')) {
 	}
 	if ($res) {
 	  my $login = $res->[0];
-	  $res = $dbh->selectrow_arrayref("SELECT name FROM scope WHERE user='".$cgi->param("token")."';");
-	  if ($dbh->err()) {
-	    warning_message($DBI::errstr);
-	    exit 0;
-	  }
+	  $res = $res2;
 	  if ($res) {
 	    my $email = $res->[0];
 	    $dbh->do("DELETE FROM scope WHERE user='".$cgi->param("token")."'");
@@ -248,35 +251,19 @@ unless ($cgi->param('action')) {
 	my $secret = secret();
 	my $pass = md5_hex(scalar $cgi->param("password"));
 	$dbh->do("INSERT INTO user (login, name, password, email, confirmed) VALUES ('".(EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param("login"))."', '".$cgi->param("username")."', '".$pass."', '".$cgi->param("email")."', '".$secret."');");
-	$dbh->do("INSERT INTO scope (name, user) VALUES ('".$cgi->param("login")."', '".$cgi->param("login")."');");
+
+	if ($claimuser) {
+	  $dbh->do("DELETE FROM scope WHERE user='".$cgi->param("token")."'");
+	  $dbh->do("UPDATE rights SET scope='".(EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param("login"))."' WHERE scope='".$claimuser."'");
+	}
+	
+	$dbh->do("INSERT INTO scope (name, user) VALUES ('".(EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param("login"))."', '".(EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param("login"))."');");
 	$dbh->commit();
 	if ($dbh->err()) {
 	  warning_message($DBI::errstr);
 	  exit 0;
 	}
-	
-	if ($cgi->param("token")) {
-	  $res = $dbh->selectrow_arrayref("SELECT name FROM scope WHERE user='".$cgi->param("token")."';");
-	  if ($dbh->err()) {
-	    warning_message($DBI::errstr);
-	    exit 0;
-	  }
-	  if ($res) {
-	    my $email = $res->[0];
-	    my $login = EMAIL_IS_LOGIN ? $cgi->param('email') : $cgi->param('login');
-	    $dbh->do("DELETE FROM scope WHERE user='".$cgi->param("token")."'");
-	    $dbh->do("UPDATE rights SET scope='$login' WHERE scope='".$email."'");
-	    $dbh->commit();
-	    if ($dbh->err()) {
-	      warning_message($DBI::errstr);
-	      exit 0;
-	    }
-	  } else {
-	    warning_message("token not found");
-	    exit 0;
-	  }
-	}
-	
+		
 	my $email = $cgi->param("email");
 	if (sendmail({ from    => ADMIN_EMAIL,
 		       to      => $email,
@@ -540,6 +527,61 @@ unless ($cgi->param('action')) {
 	respond('{ "ERROR": "invalid login" }', 401);
       }
       
+    } elsif ($cgi->param('action') eq 'reconfirm') {
+      
+      unless ($cgi->http('HTTP_AUTH')) {
+	respond('{ "ERROR": "missing authentication" }', 400);
+      }
+      my $login = $dbh->selectrow_arrayref("SELECT login FROM tokens WHERE token='".$cgi->http('HTTP_AUTH')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($login) {
+	$login = $login->[0];
+      } else {
+	respond('{ "ERROR": "invalid access token" }', 401);
+      }
+      
+      my $admin = 0;
+      my $res = $dbh->selectrow_arrayref("SELECT admin FROM user WHERE login='$login'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      } else {
+	if ($res->[0]) {
+	  $admin = 1;
+	}
+      }
+      
+      unless ($admin) {
+	respond('{ "ERROR": "insufficient permissions" }', 401);
+      }
+      
+      unless ($cgi->param('login')) {
+	respond('{ "ERROR": "missing login" }', 400);
+      }
+      
+      my $user = $dbh->selectrow_arrayref("SELECT login, name, email, confirmed FROM user WHERE login='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+
+      if (! $user) {
+	respond('{ "ERROR": "user not found" }', 404);
+      }
+
+      if ($user->[3] eq 'yes') {
+	respond('{ "ERROR": "user is already confirmed" }', 400);
+      }
+      
+      if (sendmail({ from    => ADMIN_EMAIL,
+		     to      => $user->[2],
+		     subject => EMAIL_REG_SUBJECT,
+		     body => "Dear ".$user->[1].",\n".EMAIL_REG_PREFIX.BASE_URL."/cgi-bin/oAuth.cgi?action=verify&login=".(EMAIL_IS_LOGIN ? $user->[2] : $user->[0])."&id=".$user->[3].EMAIL_REG_SUFFIX})) {
+	respond('{ "ERROR": null, "message": "confirmation message resent to '.$user->[1].' ('.(EMAIL_IS_LOGIN ? $user->[2] : $user->[0]).')" }', 200);
+      } else {
+	respond('{ "ERROR": "could not resend confirmation message" }', 500);
+      }
+      
     } elsif ($cgi->param('action') eq 'rights') {
       unless ($cgi->http('HTTP_AUTH')) {
 	respond('{ "ERROR": "missing authentication" }', 400);
@@ -597,7 +639,7 @@ unless ($cgi->param('action')) {
       my $response = '{ "ERROR": false, "columns": [ "type", "item", "edit", "view", "owner", "users" ], "data": [';
       my $rs = [];
       foreach my $row (@$rights) {
-	push(@$rs, '[ "'.$row->[0].'", "'.$row->[1].'", '.($row->[2] ? 'true' : 'false').', '.($row->[3] ? 'true' : 'false').', '.($row->[4] ? 'true' : 'false').', '.($scopeuserhash->{$row->[5]} || '[]').']');
+	push(@$rs, '[ "'.$row->[0].'", "'.$row->[1].'", '.($row->[2] ? 'true' : 'false').', '.($row->[3] ? 'true' : 'false').', '.($row->[4] ? 'true' : 'false').', '.$scopeuserhash->{$row->[5]}.']');
       }
       $response .= join(",", @$rs).' ] }';
       respond($response);
@@ -761,11 +803,11 @@ unless ($cgi->param('action')) {
       my $token = $cgi->param('token');
       unless ($token) {
 	warning_message("No token was detected in a claim token request");
-	return;
+	exit 0;
       }
       
       claim_token_screen($token);
-      return;
+      exit 0;
     } else {
       respond('{ "ERROR": "Authentication page called with an invalid action parameter - '.$cgi->param('action').'" }', 400);
     }
@@ -833,7 +875,7 @@ sub warning_message {
     print qq~<div class="alert alert-error">
 <button class="close" data-dismiss="alert" type="button">x</button>~;
     print $message;
-    print qq~<br><a href="oAuth.cgi">return to registration</a><a href="~.APPLICATION_URL.qq~" style="margin-left: 50px;">return to application</a></div>~;
+    print qq~<br><a href="oAuth.cgi">return to registration</a><a href="~.APPLICATION_URL.qq~" style="float: right;">return to application</a></div>~;
     print close_template();    
 }
 
@@ -934,7 +976,7 @@ sub claim_token_screen {
               <p class="help-block">Enter your full name as you would like it to be displayed.</p>
             </div>
           </div>
-
+~.(EMAIL_IS_LOGIN ? '' : qq~
           <div class="control-group">
             <label class="control-label" for="login">Login</label>
             <div class="controls">
@@ -942,7 +984,7 @@ sub claim_token_screen {
               <p class="help-block">Enter your desired login. Use alphanumerical characters only</p>
             </div>
           </div>
-
+~).qq~
           <div class="control-group">
             <label class="control-label" for="email">eMail</label>
             <div class="controls">
