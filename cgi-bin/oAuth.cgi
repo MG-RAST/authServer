@@ -1,4 +1,10 @@
 #!/usr/bin/perl
+
+# authServer main script
+# This is an authentication server complying to the oAuth2 protocol. It supports user
+# and application registration as well as rights management. Use OAuthConfig.pm for
+# configuration and more information.
+
 use strict;
 use warnings;
 no warnings 'once';
@@ -63,27 +69,6 @@ if ($cgi->param('logout')) {
     print base_template();
     print success_message("You have been logged out.");
     print close_template();
-    exit 0;
-  }
-}
-
-if (AUTH_KEYWORD && $cgi->param(AUTH_KEYWORD)) {
-  my $phrase = $cgi->param(AUTH_KEYWORD);
-  if (AUTH_PREFIX) {
-    my $pf = AUTH_PREFIX;
-    if ($phrase =~ /^$pf/) {
-      $phrase = substr($phrase, length $pf);
-    } else {
-      warning_message('invalid credential format');
-      exit 0;
-    }
-  }
-  my ($u,$p) = split(/\:/, decode_base64($phrase));
-  if ($u && $p) {
-    $cgi->param('login', $u);
-    $cgi->param('pass', $p);
-  } else {
-    warning_message('could not evaluate credentials');
     exit 0;
   }
 }
