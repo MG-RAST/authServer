@@ -1,14 +1,15 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+no warnings 'once';
 
-use DBI;
+
 use CGI;
 use CGI::Cookie;
-
 $CGI::LIST_CONTEXT_WARN = 0;
 $CGI::Application::LIST_CONTEXT_WARN = 0;
 
+use DBI;
 use Digest::MD5 qw(md5_hex);
 use Net::SMTP;
 use POSIX qw(strftime);
@@ -77,7 +78,7 @@ if (AUTH_KEYWORD && $cgi->param(AUTH_KEYWORD)) {
       exit 0;
     }
   }
-  my ($u,$p) = split(/\:/, decode_base64($key));
+  my ($u,$p) = split(/\:/, decode_base64($phrase));
   if ($u && $p) {
     $cgi->param('login', $u);
     $cgi->param('pass', $p);
@@ -341,9 +342,8 @@ unless ($cgi->param('action')) {
 	    if ($res) {
 	      $secret = $res->[0];
 	    } else {
-	      if (TRUSTED) {
+	      if (TRUSTED && $cgi->param("client_id") eq TRUSTED) {
 		$cgi->param("accept", "1");
-		$cgi->param("client_id", TRUSTED);
 	      }
 	      if (defined($cgi->param("accept"))) {
 		if ($cgi->param('accept') eq '1') {
