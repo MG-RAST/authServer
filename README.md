@@ -1,12 +1,8 @@
 # authServer
 oAuth authentication server with rights management
 
-
-
-
 ## Configure MySQL
-BY default this OAuth server uses a SQLite database. This are instructions how you can create a database in MySQL. 
-
+By default this OAuth server uses a SQLite database. This are instructions how you can create a database in MySQL. 
 
 Database name and user name are just examples, you can choose whatever you want.
 ```bash
@@ -49,3 +45,6 @@ the full URL including your service script name (i.e. client.cgi). You
 will receive a secret that must be used by the app to verify against
 the oAuth server. After your app is registered you probably want to
 set the configuration variable back to 0.
+
+For more configuration information look at OAuthConfig.pm. To set up
+your application look at client.cgi as an example of a client handler.
