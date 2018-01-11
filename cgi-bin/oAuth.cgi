@@ -199,6 +199,21 @@ unless ($cgi->param('action')) {
       exit 0;
     }
     
+  } elsif ($cgi->param("action") eq "user_details") {
+    if ($user) {
+      my $res = $dbh->selectrow_arrayref("SELECT login, cookie, name, email FROM user WHERE login='".$user."';");
+      if ($dbh->err()) {
+	warning_message($DBI::errstr);
+	exit 0;
+      }
+      if (! $res) {
+	warning_message('User not found');
+      }
+      my $html = '<h3>Current User</h3><table><tr><td style="font-weight: bold; text-align: right;">full name</td><td style="text-align: left; padding-left: 15px;">'.$res->[2].'</td></tr><tr><td style="font-weight: bold; text-align: right;">login</td><td style="text-align: left; padding-left: 15px;">'.$res->[0].'</td></tr><tr><td style="font-weight: bold; text-align: right;">email</td><td style="text-align: left; padding-left: 15px;">'.$res->[3].'</td></tr><tr><td style="font-weight: bold; text-align: right;">token</td><td style="text-align: left; padding-left: 15px;">'.$res->[1].'</td></tr></table>';
+      information_page($html);
+    } else {
+      warning_message('There is currently no user logged in');
+    }
   } elsif ($cgi->param("action") eq "register_user") {
     my $claimuser;
     if ($cgi->param("token")) {
@@ -874,6 +889,16 @@ sub close_template {
 
   </body>
 </html>~;
+}
+
+sub information_page {
+  my ($page) = @_;
+
+  $dbh->disconnect();
+    print $cgi->header();
+    print base_template();
+    print $page;
+    print close_template(); 
 }
 
 sub warning_message {
