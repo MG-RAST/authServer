@@ -37,8 +37,8 @@ use constant JS_DIR => '/js/';
 use constant CSS_DIR => '/css/';
 
 # response email and SMTP server used in registration and sharing emails
-use constant ADMIN_EMAIL => "mg-rast\@rt.mcs.anl.gov";
-use constant SMTP => "smtp.mcs.anl.gov";
+use constant ADMIN_EMAIL => "";
+use constant SMTP => "";
 use constant EMAIL_REG_SUBJECT => "";
 use constant EMAIL_REG_PREFIX => "";
 use constant EMAIL_REG_SUFFIX => "";
