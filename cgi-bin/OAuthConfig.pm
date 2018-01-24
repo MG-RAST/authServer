@@ -22,8 +22,8 @@ use constant EMAIL_IS_LOGIN => "";
 # The TRUSTED application does not require the user to confirm they want to share their
 # information with the app. Set this to 0 if you do not want to use any trusted application.
 use constant APPLICATION_NAME => "Authentication Server";
-use constant TRUSTED => "Demo App";
-use constant APPLICATION_URL => "http://localhost/index.html";
+use constant TRUSTED => 0;
+use constant APPLICATION_URL => "";
 
 # Setting this to true will enable the registration of applications / users (if oAuth.cgi is
 # called without any parameters)
