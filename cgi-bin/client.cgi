@@ -31,6 +31,9 @@ my $cgi = new CGI();
 my $settings = { app_id => APPLICATION_NAME,
 		 app_secret => APPLICATION_SECRET,
 		 dialog_url => BASE_URL.'/oAuth.cgi?action=dialog',
+
+		 # if you are using the authServer in a container and the BASE_URL points to localhost, you need to use
+		 # the internal network host names here!
 		 token_url  => BASE_URL.'/oAuth.cgi?action=token',
 		 data_url   => BASE_URL.'/oAuth.cgi?action=data' };
 
