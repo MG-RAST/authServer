@@ -14,6 +14,7 @@ use constant USER_DB => '/db/user.db';
 use constant MYSQL_USER_NAME => "";
 use constant MYSQL_USER_PASSWORD => "";
 use constant DBI_CONNECT => "dbi:SQLite:dbname=".USER_DB;
+use constant EMAIL_IS_LOGIN => "";
 
 # Name of the authServer. If you use the authServer for a single application, you can use
 # the name of that application and its URL here. In this case you should also set TRUSTED
@@ -38,15 +39,13 @@ use constant CSS_DIR => '/css/';
 # response email and SMTP server used in registration and sharing emails
 use constant ADMIN_EMAIL => "mg-rast\@rt.mcs.anl.gov";
 use constant SMTP => "smtp.mcs.anl.gov";
-use constant EMAIL_IS_LOGIN => "";
 use constant EMAIL_REG_SUBJECT => "";
 use constant EMAIL_REG_PREFIX => "";
 use constant EMAIL_REG_SUFFIX => "";
-use constant EMAIL_SHARE_UNKNOWN_SUFFIX => "";
 use constant EMAIL_SHARE_SUBJECT => "";
-use constant EMAIL_SHARE_UNKNOWN_PREFIX => "";
 use constant EMAIL_SHARE_KNOWN => "";
-use constant EMAIL_SHARE_SUBJECT => "";
+use constant EMAIL_SHARE_UNKNOWN_PREFIX => "";
+use constant EMAIL_SHARE_UNKNOWN_SUFFIX => "";
 
 
 @ISA = qw(Exporter);
