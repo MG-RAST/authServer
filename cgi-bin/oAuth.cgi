@@ -90,6 +90,11 @@ if ($cgi->param('login') && $cgi->param('pass')) {
       warning_message($DBI::errstr);
       exit 0;
     }
+    if ($cgi->param('cmd')) {
+      print $cgi->header('application/json');
+      print '{"token":"'.$secret.'"}';
+      exit 0;
+    }
     $cookie = CGI::Cookie->new( -name    => SESSION_COOKIE_NAME,
 				-value   => $uhash.";".$secret,
 				-expires => SESSION_TIMEOUT );
