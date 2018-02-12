@@ -204,6 +204,139 @@ unless ($cgi->param('action')) {
       exit 0;
     }
     
+  } elsif ($cgi->param("action") eq "set_password") {
+    if ($user) {
+      my $res = $dbh->selectrow_arrayref("SELECT user.admin FROM user WHERE login='".$user."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($res) {
+	if (! $res->[0]) {
+	  respond('{ "ERROR": "you must be an administrator to delete a user" }', 401);
+	}
+      } else {
+	respond('{ "ERROR": "invalid access token" }', 500);
+      }
+    } else {
+      if (! $user) {
+	if ($cgi->http('HTTP_AUTH') && ! $cgi->param("access_token")) {
+	  $cgi->param("access_token", $cgi->http('HTTP_AUTH'));
+	}
+	if ($cgi->param("access_token")) {
+	  my $res = $dbh->selectrow_arrayref("SELECT user.login FROM user, tokens WHERE tokens.token='".$cgi->param('access_token')."' AND user.login=tokens.login;");
+	  if ($dbh->err()) {
+	    respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	  }
+	  if ($res) {
+	    $user = $res->[0];
+	  } else {
+	    respond('{ "ERROR": "invalid access token" }', 500);
+	  }
+	}
+      }
+    }
+    if ($user) {
+      if ($cgi->param('password')) {
+	my $pass = md5_hex($cgi->param('password'));
+	$dbh->do("UPDATE user SET password='".$pass."' WHERE login='".$user."'");
+	$dbh->commit();
+	if ($dbh->err()) {
+	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	} else {
+	  respond('{ "OK": "password updated" }');
+	}
+      } elsif ($cgi->param('reset')) {
+	my $res = $dbh->selectrow_arrayref("SELECT email FROM user WHERE login='".$user."'");
+	if ($dbh->err()) {
+	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	}
+	if (! $res) {
+	  respond('{ "ERROR": "could not retrieve email for user" }', 500);
+	}
+	my $secret = secret(8);
+	my $pass = md5_hex($secret);
+	$dbh->do("UPDATE user SET password='".$pass."' WHERE login='".$user."'");
+	$dbh->commit();
+	if ($dbh->err()) {
+	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	}
+	if (sendmail({ from    => ADMIN_EMAIL,
+		       to      => $res->[0],
+		       subject => 'password reset request',
+		       body    => "You have requested your password to be reset. Your password has been set to\n\n".$secret."\n\nYou should go to ".EMAIL_REG_PREFIX.BASE_URL."/cgi-bin/oAuth.cgi?action=user_details to change it." })) {
+	  if ($cookie) {
+	    success_message("Your password has been reset.");
+	    exit 0;
+	  } else {
+	    respond('{ "OK": "password reset" }');
+	  }
+	} else {
+	  respond('{ "ERROR": "Could not send email" }', 500);
+	}
+      } else {
+	respond('{ "ERROR": "missing parameter" }', 400);
+      }
+    } else {
+      respond('{ "ERROR": "missing access token" }', 400);
+    }
+  } elsif ($cgi->param("action") eq "delete_user") {
+    if ($user) {
+      my $res = $dbh->selectrow_arrayref("SELECT user.admin FROM user WHERE login='".$user."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      if ($res) {
+	if (! $res->[0]) {
+	  respond('{ "ERROR": "you must be an administrator to delete a user" }', 401);
+	}
+      } else {
+	respond('{ "ERROR": "invalid access token" }', 500);
+      }
+    } else {
+      if ($cgi->http('HTTP_AUTH') && ! $cgi->param("access_token")) {
+	$cgi->param("access_token", $cgi->http('HTTP_AUTH'));
+      }
+      if ($cgi->param("access_token")) {
+	my $res = $dbh->selectrow_arrayref("SELECT user.admin FROM user, tokens WHERE tokens.token='".$cgi->param('access_token')."' AND user.login=tokens.login;");
+	if ($dbh->err()) {
+	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+	}
+	if ($res) {
+	  if (! $res->[0]) {
+	    respond('{ "ERROR": "you must be an administrator to delete a user" }', 401);
+	  }
+	} else {
+	  respond('{ "ERROR": "invalid access token" }', 500);
+	}
+      } else {
+	respond('{ "ERROR": "you must be an administrator to delete a user" }', 401);
+      }
+    }
+    # if we get here there is a user which is an admin
+    if ($cgi->param('login')) {
+      my $res = $dbh->selectrow_arrayref("DELETE FROM user WHERE login='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      $res = $dbh->selectrow_arrayref("DELETE FROM accepts WHERE login='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      $res = $dbh->selectrow_arrayref("DELETE FROM tokens WHERE login='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      $res = $dbh->selectrow_arrayref("DELETE FROM scope WHERE user='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+      $res = $dbh->selectrow_arrayref("DELETE FROM rights WHERE scope='".$cgi->param('login')."'");
+      if ($dbh->err()) {
+	respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
+      }
+    } else {
+      respond('{ "ERROR": "missing login parameter" }', 400);
+    }
   } elsif ($cgi->param("action") eq "user_details") {
     if ($user) {
       my $res = $dbh->selectrow_arrayref("SELECT login, cookie, name, email FROM user WHERE login='".$user."';");
@@ -214,7 +347,7 @@ unless ($cgi->param('action')) {
       if (! $res) {
 	warning_message('User not found');
       }
-      my $html = '<h3>Current User</h3><table><tr><td style="font-weight: bold; text-align: right;">full name</td><td style="text-align: left; padding-left: 15px;">'.$res->[2].'</td></tr><tr><td style="font-weight: bold; text-align: right;">login</td><td style="text-align: left; padding-left: 15px;">'.$res->[0].'</td></tr><tr><td style="font-weight: bold; text-align: right;">email</td><td style="text-align: left; padding-left: 15px;">'.$res->[3].'</td></tr><tr><td style="font-weight: bold; text-align: right;">token</td><td style="text-align: left; padding-left: 15px;">'.$res->[1].'</td></tr></table>';
+      my $html = '<h3>Current User</h3><table><tr><td style="font-weight: bold; text-align: right;">full name</td><td style="text-align: left; padding-left: 15px;">'.$res->[2].'</td></tr><tr><td style="font-weight: bold; text-align: right;">login</td><td style="text-align: left; padding-left: 15px;">'.$res->[0].'</td></tr><tr><td style="font-weight: bold; text-align: right;">email</td><td style="text-align: left; padding-left: 15px;">'.$res->[3].'</td></tr><tr><td style="font-weight: bold; text-align: right;">token</td><td style="text-align: left; padding-left: 15px;">'.$res->[1].'</td></tr><tr><td style="font-weight: bold; text-align: right;">password</td><td style="text-align: left; padding-left: 15px;"><input type="password" placeholder="new password" id="pw1"></td></tr><tr><td style="font-weight: bold; text-align: right;">confirm</td><td style="text-align: left; padding-left: 15px;"><input type="password" placeholder="confirm password" id="pw2"><button class="btn" onclick="if(document.getElementById(\'pw1\').value != document.getElementById(\'pw2\').value){alert(\'password and password confirm do not match\');}else{window.location=\'oAuth.cgi?action=set_password&login='.$user.'&password=\'+document.getElementById(\'pw1\').value;};">set password</button></td></tr></table>';
       information_page($html);
     } else {
       warning_message('There is currently no user logged in');
@@ -951,6 +1084,7 @@ sub login_screen {
   
   print $cgi->header();
   print base_template();
+  print custom_login_html();
   print qq~
 <div>
   <h3>Login</h3>
@@ -1058,10 +1192,34 @@ sub claim_token_screen {
   $dbh->disconnect();
 }
 
+sub custom_login_html {
+  my $html = '';
+
+  if ($cgi->param("client_id")) {
+    my $cname = $cgi->param("client_id");
+    $cname =~ s/\s/_/g;
+    my $fn = "../html/".$cname.".html";
+    if (-f $fn) {
+      open(FH, "<$fn") or return "";
+      while (<FH>) {
+	chomp;
+	$html .= $_;
+      }
+      close FH;
+    }
+  }
+  
+  return $html;
+}
+
 sub secret {
+  my ($howlong) = @_;
+  unless ($howlong) {
+    $howlong = 32;
+  }
     my $generated = "";
     my $possible = 'abcdefghijkmnpqrstuvwxyz123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-    while (length($generated) < 32) {
+    while (length($generated) < $howlong) {
 	$generated .= substr($possible, (int(rand(length($possible)))), 1);
     }
     return $generated;
