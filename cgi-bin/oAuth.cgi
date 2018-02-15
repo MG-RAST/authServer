@@ -237,11 +237,9 @@ unless ($cgi->param('action')) {
 	}
 	if ($res) {
 	  my $login = $res->[0];
-	  $res = $res2;
-	  if ($res) {
-	    my $email = $res->[0];
+	  if ($claimuser) {
 	    $dbh->do("DELETE FROM scope WHERE user='".$cgi->param("token")."'");
-	    $dbh->do("UPDATE rights SET scope='$login' WHERE scope='".$email."'");
+	    $dbh->do("UPDATE rights SET scope='$login' WHERE scope='".$claimuser."'");
 	    $dbh->commit();
 	    if ($dbh->err()) {
 	      warning_message($DBI::errstr);
@@ -669,6 +667,10 @@ unless ($cgi->param('action')) {
       my $response = '{ "ERROR": false, "columns": [ "type", "item", "edit", "view", "owner", "users" ], "data": [';
       my $rs = [];
       foreach my $row (@$rights) {
+	# check if there is a scopeuserhash, otherwise skip the row
+	if (! $scopeuserhash->{$row->[5]}) {
+	  next;
+	}
 	push(@$rs, '[ "'.$row->[0].'", "'.$row->[1].'", '.($row->[2] ? 'true' : 'false').', '.($row->[3] ? 'true' : 'false').', '.($row->[4] ? 'true' : 'false').', '.$scopeuserhash->{$row->[5]}.']');
       }
       $response .= join(",", @$rs).' ] }';
@@ -691,7 +693,7 @@ unless ($cgi->param('action')) {
       }
       my $existing_user = 0;
       if ($cgi->param('scope')) {
-	my $response = $dbh->selectrow_arrayref("SELECT email FROM user, scope WHERE scope='".$cgi->param('scope')."' AND user.login=scope.user");
+	my $response = $dbh->selectrow_arrayref("SELECT email FROM user, scope WHERE scope.name='".$cgi->param('scope')."' AND user.login=scope.user");
 	if ($dbh->err()) {
 	  respond('{ "ERROR": "'.$DBI::errstr.'" }', 500);
 	}
@@ -951,8 +953,8 @@ sub login_screen {
   
   print $cgi->header();
   print base_template();
-  print qq~
-<div>
+  print application_template();
+  print qq~<div style="float: left;">
   <h3>Login</h3>
   <form method=post>
     $hidden$message
@@ -1073,6 +1075,24 @@ sub dbh {
     die "could not open database: $@";
   }
   return $connection;
+}
+
+sub application_template {
+  my $c = $cgi->param("client_id");
+  $c =~ s/ /_/g;
+
+  my $html = "";
+  my $fn = "../../$c.html";
+  if (-f $fn) {
+    open(FH, $fn) or return "";
+    while (<FH>) {
+      chomp;
+      $html .= $_;
+    }
+    close FH;
+  }
+  
+  return $html;
 }
 
 sub quote {
