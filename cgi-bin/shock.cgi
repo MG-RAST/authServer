@@ -49,15 +49,17 @@ unless ($su) {
   if ($u =~ /download/) {
     if ($request_method eq 'GET' && $cgi->url(-relative=>1)) {
       my $nodeid = $cgi->url(-relative=>1);
-      eval {
-	my $response = $json->decode($agent->get($url.$nodeid, @args)->content);
-	$project_id = $response->{data}->{attributes}->{project_id};
-	$group = $response->{data}->{attributes}->{group};
-	$project = $response->{data}->{attributes}->{project};
-	$filename = $response->{data}->{attributes}->{name};
-      };
-      if ($@) {
-	respond('{ "ERROR": "unable to retrieve node from server ('.$@.')" }', 404);
+      if ($nodeid) {
+	eval {
+	  my $response = $json->decode($agent->get($url.$nodeid, @args)->content);
+	  $project_id = $response->{data}->{attributes}->{project_id};
+	  $group = $response->{data}->{attributes}->{group};
+	  $project = $response->{data}->{attributes}->{project};
+	  $filename = $response->{data}->{attributes}->{name};
+	};
+	if ($@) {
+	  respond('{ "ERROR": "unable to retrieve node from server ('.$@.')" }', 404);
+	}
       }
     } elsif ($request_method eq 'POST') {
       my $params = {};
