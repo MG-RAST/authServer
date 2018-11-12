@@ -23,16 +23,22 @@ use JSON;
 use LWP::UserAgent;
 use URI::Escape;
 
-use AuthConfig;
+
+use AuthConfig \%ENV;
+
+
+#print STDERR "2) authclient.cgi SELF_URL: ".$ENV{'SELF_URL'}."\n";
+#print STDERR "3) authclient.cgi APPLICATION_NAME: ".AuthConfig::APPLICATION_NAME."\n";
+
 
 my $json = new JSON;
 my $cgi = new CGI();
 
-my $settings = { app_id => APPLICATION_NAME,
-		 app_secret => APPLICATION_SECRET,
-		 dialog_url => AUTH_URL.'/oAuth.cgi?action=dialog',
-		 token_url  => AUTH_URL.'/oAuth.cgi?action=token',
-		 data_url   => AUTH_URL.'/oAuth.cgi?action=data'
+my $settings = { app_id => AuthConfig::APPLICATION_NAME,
+		 app_secret => AuthConfig::APPLICATION_SECRET,
+		 dialog_url => AuthConfig::AUTH_URL.'/oAuth.cgi?action=dialog',
+		 token_url  => AuthConfig::AUTH_URL.'/oAuth.cgi?action=token',
+		 data_url   => AuthConfig::AUTH_URL.'/oAuth.cgi?action=data'
 		 };
 
 my $app_id = $settings->{app_id};
@@ -41,7 +47,7 @@ my $dialog_url = $settings->{dialog_url};
 my $token_url = $settings->{token_url};
 my $data_url = $settings->{data_url};
 
-my $my_url = APPLICATION_CGI_URL."/authclient.cgi";
+my $my_url = APPLICATION_URL."/cgi-bin/authclient.cgi";
 
 my $code = $cgi->param('code');
 
@@ -57,10 +63,10 @@ my $response = $json->decode($ua->get($call_url)->content);
 my $access_token = $response->{token};
 $call_url = $data_url . "&access_token=" . $access_token;
 $response = $ua->get($call_url)->content;
-my $cookie = CGI::Cookie->new( -name    => COOKIE_NAME,
+my $cookie = CGI::Cookie->new( -name    => AuthConfig::COOKIE_NAME,
 			       -value   => $response,
-			       -expires => COOKIE_EXPIRATION );
+			       -expires => AuthConfig::COOKIE_EXPIRATION );
 
-print $cgi->redirect(-uri => APPLICATION_URL, -cookie => $cookie);
+print $cgi->redirect(-uri => AuthConfig::APPLICATION_URL, -cookie => $cookie);
 
 exit 0;
