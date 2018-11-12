@@ -47,7 +47,9 @@ my $dialog_url = $settings->{dialog_url};
 my $token_url = $settings->{token_url};
 my $data_url = $settings->{data_url};
 
-my $my_url = AuthConfig::APPLICATION_URL."/cgi-bin/authclient.cgi";
+my $my_url = AuthConfig::APPLICATION_URL ; 
+$my_url =~ s/\/+$//;
+$my_url .= "/cgi-bin/authclient.cgi";
 
 my $code = $cgi->param('code');
 
